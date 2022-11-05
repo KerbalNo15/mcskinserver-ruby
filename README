@@ -1,0 +1,11 @@
+A simple Minecraft skin server designed for use with OpenMCSkins. This project is not affiliated with OpenMCSkins.
+Please do not use this outside of a personal setting, as I have not tested it for vulnerabilities.
+Note that OpenMCSkins includes a more well-developed server that you could use instead.
+
+Using:
+
+Place the skin files in the skins/ directory as PNG files and name them with the Minecraft usernames of the players who play on the server.
+Please note that some usernames may be incompatible (Special characters in the filename could be disallowed.)
+Launch the program like so: 'ruby server.rb <listening address>', substituting 'listening address' with the IP address of the server. You may need root permissions to start the server because it listens on port 80 by default.
+Install OpenMCSkins on all your Minecraft clients and configure the mod to point to the server's listening address.
+Launch Minecraft and enjoy!
