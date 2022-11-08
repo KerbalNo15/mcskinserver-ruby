@@ -8,10 +8,12 @@
 #Many thanks to https://blog.appsignal.com/2016/11/23/ruby-magic-building-a-30-line-http-server-in-ruby.html for the ruby web server basics
 require 'socket'
 require 'json'
+require 'pathname'
 
 addr = ARGV[0] #The listening address of the server
 server = TCPServer.new(addr, 80) #Create TCP server
 puts "Listening on address " + addr
+skinMap = {}
 
 while session = server.accept #Continually listen for connections
 	requestdata = session.gets #Get the request from the client
@@ -20,12 +22,12 @@ while session = server.accept #Continually listen for connections
 		session.close
 		next
 	end
-	
+
+	#requestdata = requestdata.scan(/[\w \/\.]/).join.split(' ')[1]
 	if requestdata.split('/')[1] == "textures" #Stage 1 is to request the skin URL from the server. Connections like this will be in the format "https://<address>:<port>/textures/<username>"
 
 		skinPath = ("skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*]/).join + ".png") #The path for the skin
-
-		if File.file?(skinPath) #If the skin exists for this player
+		if File.file?(skinPath) && Pathname.new(skinPath).realpath.dirname.to_s == Pathname.pwd.to_s + "/skins" #If the skin exists for this player. Also (hopefully) prevent path traversal
 			responseData = {SKIN: {url: "null"}} #Set up a basic response template
 			responseData[:SKIN][:url] = "http://" + addr + "/skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*]/).join + ".png" #Include the url for that skin in the response
 			session.print "HTTP/1.1 200\r\n" #Headers
@@ -44,7 +46,7 @@ while session = server.accept #Continually listen for connections
 	else #The client most likely wants a skin texture
 
 		requestedPath = ("skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*\.]/).join) #The path for the skin
-		if File.file?(requestedPath) # the skin exists on the server
+		if File.file?(requestedPath) && Pathname.new(requestedPath).realpath.dirname.to_s == Pathname.pwd.to_s + "/skins" # the skin exists on the server. Also (hopefully) prevent path traversal
 			image = File.open("skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*\.]/).join)
 			filedata = image.read
 			session.print "HTTP/1.1 200\r\n" # 1
