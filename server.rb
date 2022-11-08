@@ -16,6 +16,11 @@ puts "Listening on address " + addr
 while session = server.accept #Continually listen for connections
 	requestdata = session.gets #Get the request from the client
 
+	if requestdata =~ /\/\// #Protect against a request like GET /textures//skin.png which would crash the server
+		session.close
+		next
+	end
+	
 	if requestdata.split('/')[1] == "textures" #Stage 1 is to request the skin URL from the server. Connections like this will be in the format "https://<address>:<port>/textures/<username>"
 
 		skinPath = ("skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*]/).join + ".png") #The path for the skin
