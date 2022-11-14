@@ -10,31 +10,36 @@ require 'socket'
 require 'json'
 require 'pathname'
 
+skinHashMap = {} # hash->file path
+hashSkinMap = {} # player name->hash
+
+skinFiles = Dir["skins/*.png"] #get all the files in the skins/ directory
+
+#hash each file and store the results in two maps: one that maps the name to the hash, and another that goes the other direction
+skinFiles.each do |filename|
+thisHash = File.read(filename).hash.to_s
+hashSkinMap[filename.split("/")[1].split(".")[0]] = thisHash
+skinHashMap[thisHash] = filename
+end
+
 addr = ARGV[0] #The listening address of the server
 server = TCPServer.new(addr, 80) #Create TCP server
 puts "Listening on address " + addr
-skinMap = {}
 
 while session = server.accept #Continually listen for connections
 	requestdata = session.gets #Get the request from the client
 
-	if requestdata =~ /\/\// #Protect against a request like GET /textures//skin.png which would crash the server
-		session.close
-		next
-	end
-
-	#requestdata = requestdata.scan(/[\w \/\.]/).join.split(' ')[1]
 	if requestdata.split('/')[1] == "textures" #Stage 1 is to request the skin URL from the server. Connections like this will be in the format "https://<address>:<port>/textures/<username>"
+		playerName = requestdata.split('/')[2].split(' ')[0].scan(/[\w*]/).join
 
-		skinPath = ("skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*]/).join + ".png") #The path for the skin
-		if File.file?(skinPath) && Pathname.new(skinPath).realpath.dirname.to_s == Pathname.pwd.to_s + "/skins" #If the skin exists for this player. Also (hopefully) prevent path traversal
+		if hashSkinMap[playerName] != nil #check the map for a matching name
 			responseData = {SKIN: {url: "null"}} #Set up a basic response template
-			responseData[:SKIN][:url] = "http://" + addr + "/skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*]/).join + ".png" #Include the url for that skin in the response
+			responseData[:SKIN][:url] = "http://" + addr + "/skins/" + hashSkinMap[playerName] #Include the url for that skin in the response
 			session.print "HTTP/1.1 200\r\n" #Headers
 			session.print "Content-type: application/json\r\n"
 			session.print "\r\n" #Signifies the end of the headers
 			session.print JSON.generate(responseData) #Send the response data
-		else
+		else #we don't have a skin for this player
 			session.print "HTTP/1.1 200\r\n" #Headers
 			session.print "Content-type: application/json\r\n"
 			session.print "\r\n" #Signifies the end of the headers
@@ -44,16 +49,17 @@ while session = server.accept #Continually listen for connections
 		session.close #Close the connection
 
 	else #The client most likely wants a skin texture
+		requestHash = requestdata.split('/')[2].split(' ')[0].scan(/[\d\-*]/).join
 
-		requestedPath = ("skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*\.]/).join) #The path for the skin
-		if File.file?(requestedPath) && Pathname.new(requestedPath).realpath.dirname.to_s == Pathname.pwd.to_s + "/skins" # the skin exists on the server. Also (hopefully) prevent path traversal
-			image = File.open("skins/" + requestdata.split('/')[2].split(' ')[0].scan(/[\w*\.]/).join)
-			filedata = image.read
+		if skinHashMap[requestHash] != nil #check the skin map for a matching hash
+
+			filedata = File.read(skinHashMap[requestHash]) #skinHashMap converts a hash to a file path
 			session.print "HTTP/1.1 200\r\n" # 1
 			session.print "Content-type: image/png\r\n" # 2
 			session.print "\r\n" # 3
 			session.print filedata
-		else #The texture does not exist
+
+		else #we don't have this skin on the server
 			session.print "HTTP/1.1 404\r\n" # 1
 			session.print "Content-type: text/html\r\n" # 2
 			session.print "\r\n" # 3
