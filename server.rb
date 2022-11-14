@@ -23,7 +23,7 @@ skinHashMap[thisHash] = filename
 end
 
 addr = ARGV[0] #The listening address of the server
-server = TCPServer.new(addr, 8080) #Create TCP server
+server = TCPServer.new(addr, 80) #Create TCP server
 puts "Listening on address " + addr
 
 while session = server.accept #Continually listen for connections
