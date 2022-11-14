@@ -23,11 +23,16 @@ skinHashMap[thisHash] = filename
 end
 
 addr = ARGV[0] #The listening address of the server
-server = TCPServer.new(addr, 80) #Create TCP server
+server = TCPServer.new(addr, 8080) #Create TCP server
 puts "Listening on address " + addr
 
 while session = server.accept #Continually listen for connections
 	requestdata = session.gets #Get the request from the client
+
+	if requestdata =~ /\/\// #Protect against a request like GET /textures//skin.png which might crash the server
+		session.close
+		next
+	end
 
 	if requestdata.split('/')[1] == "textures" #Stage 1 is to request the skin URL from the server. Connections like this will be in the format "https://<address>:<port>/textures/<username>"
 		playerName = requestdata.split('/')[2].split(' ')[0].scan(/[\w*]/).join
